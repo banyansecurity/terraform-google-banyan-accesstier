@@ -85,3 +85,9 @@ variable "at_version" {
   description = "version specified to install if left blank, latest will be installed"
   default = ""
 }
+
+variable "datadog_api_key" {
+    type = string
+    description = "API key for DataDog"
+    default = null
+}

@@ -129,6 +129,9 @@ resource "google_compute_instance_template" "accesstier_template" {
   // todo add these tuning values to either image or startup script https://docs.banyanops.com/docs/banyan-components/netagent/deploy/tuning/
   metadata_startup_script = join("", concat([
     "#!/bin/bash -ex\n",
+    # install dogstatsd (if requested)
+    var.datadog_api_key != null ? "curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script.sh | DD_AGENT_MAJOR_VERSION=7 DD_API_KEY=${var.datadog_api_key} DD_SITE=datadoghq.com bash -v\n" : "",
+    # install prequisites
     "apt-get update -y\n",
     "apt-get install -y jq tar gzip curl sed\n",
     "ip address add ${google_compute_address.backend_service_ip_address.address} dev ens4\n", // needed for direct server response, lb doesn't change ip address to the vm's so netagent ignores it
@@ -145,6 +148,7 @@ resource "google_compute_instance_template" "accesstier_template" {
     "BANYAN_SITE_AUTOSCALE=true ",
     "BANYAN_API=${var.api_server} ",
     "BANYAN_HOST_TAGS= ",
+    var.datadog_api_key != null ? "BANYAN_STATSD=true BANYAN_STATSD_ADDRESS=127.0.0.1:8125 " : "",
     "./install ${var.refresh_token} ${var.cluster_name} \n",
   ]))
 
