@@ -67,6 +67,7 @@ terraform plan
 | <a name="input_site_domain_names"></a> [site\_domain\_names](#input\_site\_domain\_names) | List of aliases or CNAMEs that will direct traffic to this AccessTier | `list(string)` | n/a | yes |
 | <a name="input_site_name"></a> [site\_name](#input\_site\_name) | Name to use when registering this AccessTier with the console | `string` | n/a | yes |
 | <a name="input_subnetwork"></a> [subnetwork](#input\_subnetwork) | Name of the subnetwork the AccessTier will belong to | `string` | n/a | yes |
+| <a name="input_datadog_api_key"></a> [datadog\_api\_key](#input\_datadog\_api\_key) | DataDog API key to enable sending connection metrics into DataDog | `string` | `null` | no |
 
 ## Outputs
 
