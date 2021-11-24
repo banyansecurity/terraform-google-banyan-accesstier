@@ -37,7 +37,7 @@ resource "google_compute_forwarding_rule" "backend_service_forwarding_rule" {
   region = var.region
   ip_protocol = "TCP"
   load_balancing_scheme = "EXTERNAL"
-  ports = [443, 8443]
+  ports = [80, 443, 8443]
   backend_service = google_compute_region_backend_service.backend_service_accesstier.id
   ip_address = google_compute_address.backend_service_ip_address.address
 }
@@ -166,7 +166,7 @@ resource "google_compute_firewall" "accesstier_ports" {
   target_tags = ["${var.name}-accesstier-ports"]
   allow {
     protocol = "tcp"
-    ports = ["443", "8443", "9998"]
+    ports = ["80", "443", "8443", "9998"]
   }
 }
 
