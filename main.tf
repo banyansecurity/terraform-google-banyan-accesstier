@@ -131,7 +131,7 @@ resource "google_compute_instance_template" "accesstier_template" {
     "#!/bin/bash -ex\n",
     "apt-get update -y\n",
     "apt-get install -y jq tar gzip curl sed\n",
-    "ip address add ${google_compute_address.backend_service_ip_address.address} dev ens4\n", // needed for direct server response, lb doesn't change ip address to the vm's so netagent ignores it
+    "netplan set ethernets.ens4.addresses=[${google_compute_address.backend_service_ip_address.address}/32] && netplan apply\n", // needed for direct server response, lb doesn't change ip address to the vm's so netagent ignores it
     "curl https://${var.deb_repo}/onramp/deb-repo/banyan.key | apt-key add -\n",
     "apt-add-repository 'deb https://${var.deb_repo}/onramp/deb-repo xenial main'\n",
     "apt-get install -y banyan-netagent${local.install_version}\n",
