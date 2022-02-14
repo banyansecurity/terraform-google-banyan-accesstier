@@ -1,15 +1,15 @@
 variable "name" {
-  type = string
+  type        = string
   description = "Name of the environment being protected. All resources will be prefixed with this name"
 }
 
 variable "project" {
-  type = string
+  type        = string
   description = "GCloud project name where AccessTier is deployed"
 }
 
 variable "region" {
-  type = string
+  type        = string
   description = "Region in which to create the Accestier"
 }
 
@@ -53,35 +53,53 @@ variable "redirect_http_to_https" {
 }
 
 variable "machine_type" {
-  type = string
+  type        = string
   description = "Google compute instance types"
-  default = "e2-standard-4"
+  default     = "e2-standard-4"
 }
 
 variable "network" {
-  type = string
+  type        = string
   description = "Name of the network the AccessTier will belong to"
 }
 
 variable "subnetwork" {
-  type = string
+  type        = string
   description = "Name of the subnetwork the AccessTier will belong to"
 }
 
 variable "minimum_num_of_instances" {
-  type = number
+  type        = number
   description = "The minimum number of instances that should be running"
-  default = 2
+  default     = 2
 }
 
 variable "deb_repo" {
-  type = string
+  type        = string
   description = "the repo holding the netagent binaries"
-  default = "www.banyanops.com"
+  default     = "www.banyanops.com"
 }
 
 variable "at_version" {
-  type = string
+  type        = string
   description = "version specified to install if left blank, latest will be installed"
-  default = ""
+  default     = ""
+}
+
+variable "ssh_source_ip_ranges" {
+  type        = list(string)
+  description = "Source ip ranges which are allowed ssh access to the access tier"
+  default     = ["0.0.0.0/0"]
+}
+
+variable "service_source_ip_ranges" {
+  type        = list(string)
+  description = "List of ip ranges which will be allows access through the firewall to the accesstier"
+  default     = ["0.0.0.0/0"]
+}
+
+variable "service_source_tags" {
+  type        = list(string)
+  description = "List of network tags which will be allows access through the firewall to the accesstier"
+  default     = []
 }
