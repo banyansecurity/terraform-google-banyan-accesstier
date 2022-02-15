@@ -2,15 +2,15 @@
 
 //backend service
 resource "google_compute_region_health_check" "backend_service_loadbalancer_health_check" {
-  name = "${var.name}-at-backend-svc-lb-hc"
-  check_interval_sec = 5
-  timeout_sec = 5
-  healthy_threshold = 2
+  name                = "${var.name}-at-backend-svc-lb-hc"
+  check_interval_sec  = 5
+  timeout_sec         = 5
+  healthy_threshold   = 2
   unhealthy_threshold = 10
-  region = var.region
+  region              = var.region
 
   http_health_check {
-    port = 9998
+    port         = 9998
     request_path = "/"
   }
 }
@@ -19,32 +19,33 @@ locals {
   // install script is assumed to call `$ apt-get install -y banyan-netagent${install_version}`
   // so we prepend the = to at_version if it is specified
   install_version = (var.at_version == "" ? "" : "=${var.at_version}")
+  healthcheck_prober_ip_ranges = ["35.191.0.0/16", "130.211.0.0/22"]
 }
 
 resource "google_compute_region_backend_service" "backend_service_accesstier" {
-  name = "${var.name}-at-backend-svc"
-  health_checks = [google_compute_region_health_check.backend_service_loadbalancer_health_check.id]
+  name                  = "${var.name}-at-backend-svc"
+  health_checks         = [google_compute_region_health_check.backend_service_loadbalancer_health_check.id]
   load_balancing_scheme = "EXTERNAL"
-  protocol = "TCP"
-  region = var.region
+  protocol              = "TCP"
+  region                = var.region
   backend {
     group = google_compute_region_instance_group_manager.accesstier_rigm.instance_group
   }
 }
 
 resource "google_compute_forwarding_rule" "backend_service_forwarding_rule" {
-  name = "${var.name}-at-backend-svc-forwarding-rule"
-  region = var.region
-  ip_protocol = "TCP"
+  name                  = "${var.name}-at-backend-svc-forwarding-rule"
+  region                = var.region
+  ip_protocol           = "TCP"
   load_balancing_scheme = "EXTERNAL"
-  ports = [80, 443, 8443]
-  backend_service = google_compute_region_backend_service.backend_service_accesstier.id
-  ip_address = google_compute_address.backend_service_ip_address.address
+  ports                 = [80, 443, 8443]
+  backend_service       = google_compute_region_backend_service.backend_service_accesstier.id
+  ip_address            = google_compute_address.backend_service_ip_address.address
 }
 
 
 resource "google_compute_region_autoscaler" "accesstier_autoscaler" {
-  name = "${var.name}-at-rigm-autoscaler"
+  name   = "${var.name}-at-rigm-autoscaler"
   target = google_compute_region_instance_group_manager.accesstier_rigm.id
 
   region = var.region
@@ -62,22 +63,22 @@ resource "google_compute_region_instance_group_manager" "accesstier_rigm" {
   name = "${var.name}-at-rigm"
 
   base_instance_name = "${var.name}-accesstier"
-  region = var.region
+  region             = var.region
   version {
     instance_template = google_compute_instance_template.accesstier_template.id
   }
 
   auto_healing_policies {
-    health_check = google_compute_health_check.accesstier_health_check.id
+    health_check      = google_compute_health_check.accesstier_health_check.id
     initial_delay_sec = 180 //needs to be tuned
   }
 
   update_policy {
-    minimal_action = "REPLACE"
-    type = "PROACTIVE"
+    minimal_action               = "REPLACE"
+    type                         = "PROACTIVE"
     instance_redistribution_type = "PROACTIVE"
-    max_surge_fixed = 3
-    max_unavailable_fixed = 0
+    max_surge_fixed              = 3
+    max_unavailable_fixed        = 0
   }
 }
 
@@ -98,11 +99,11 @@ resource "google_compute_health_check" "accesstier_health_check" {
 
 // instance details
 resource "google_compute_instance_template" "accesstier_template" {
-  name_prefix  = "${var.name}-at-template-"
+  name_prefix = "${var.name}-at-template-"
   description = "This template is used for access tiers"
 
-  tags = setunion(google_compute_firewall.accesstier_ports.target_tags, google_compute_firewall.accestier_ssh.target_tags)
-  region = var.region
+  tags         = setunion(google_compute_firewall.accesstier_ports.target_tags, google_compute_firewall.accesstier_ssh.target_tags, google_compute_firewall.healthcheck.target_tags)
+  region       = var.region
   machine_type = var.machine_type
 
   lifecycle {
@@ -112,7 +113,7 @@ resource "google_compute_instance_template" "accesstier_template" {
   disk {
     source_image = data.google_compute_image.accesstier_image.self_link
     disk_size_gb = 10
-    disk_type = "pd-ssd"
+    disk_type    = "pd-ssd"
   }
 
   network_interface {
@@ -150,23 +151,38 @@ resource "google_compute_instance_template" "accesstier_template" {
 
 }
 
-resource "google_compute_firewall" "accestier_ssh" {
-  name = "${var.name}-accesstier-ssh"
-  network = data.google_compute_network.accesstier_network.name
-  target_tags = ["${var.name}-accesstier-ssh"]
+resource "google_compute_firewall" "accesstier_ssh" {
+  name          = "${var.name}-accesstier-ssh"
+  network       = data.google_compute_network.accesstier_network.name
+  target_tags   = ["${var.name}-accesstier-ssh"]
+  source_ranges = var.ssh_source_ip_ranges
   allow {
     protocol = "tcp"
-    ports = ["22"]
+    ports    = ["22"]
   }
 }
 
 resource "google_compute_firewall" "accesstier_ports" {
-  name = "${var.name}-accesstier-ports"
-  network = data.google_compute_network.accesstier_network.name
-  target_tags = ["${var.name}-accesstier-ports"]
+  name          = "${var.name}-accesstier-ports"
+  network       = data.google_compute_network.accesstier_network.name
+  target_tags   = ["${var.name}-accesstier-ports"]
+  source_ranges = var.service_source_ip_ranges
+  source_tags   = var.service_source_tags
   allow {
     protocol = "tcp"
-    ports = ["80", "443", "8443", "9998"]
+    ports    = ["80", "443", "8443", "9998"]
+  }
+}
+
+// Allow access to the healthcheck
+resource "google_compute_firewall" "healthcheck" {
+  name          = "${var.name}-accesstier-healthcheck"
+  network       = data.google_compute_network.accesstier_network.name
+  target_tags   = ["${var.name}-accesstier-healthcheck"]
+  source_ranges = local.healthcheck_prober_ip_ranges
+  allow {
+    protocol = "tcp"
+    ports    = ["9998"]
   }
 }
 
@@ -181,13 +197,13 @@ data "google_compute_network" "accesstier_network" {
 }
 
 data "google_compute_subnetwork" "accesstier_subnet" {
-  name = var.subnetwork
+  name   = var.subnetwork
   region = var.region
 }
 
 resource "google_compute_address" "backend_service_ip_address" {
-  name = "${var.name}-ip-address-at-backend-svc"
-  region = var.region
+  name         = "${var.name}-ip-address-at-backend-svc"
+  region       = var.region
   address_type = "EXTERNAL"
 }
 
